@@ -1,0 +1,18 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Emberfall style board</title>
+<style>
+body{margin:0;padding:20px;background:#0d0b0a;color:#f3e9dc;font:14px/1.45 system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 4px;color:#ff8a3d} p{color:#a8998a;margin:0 0 16px;max-width:760px}
+.grid{display:grid;gap:18px}
+figure{margin:0;background:#17120f;border:1px solid rgba(255,240,220,.12);border-radius:10px;padding:12px}
+canvas{width:100%;max-width:960px;aspect-ratio:16/9;display:block;border-radius:6px;image-rendering:pixelated}
+figcaption{margin-top:8px} figcaption b{color:#f3e9dc} figcaption span{color:#a8998a}
+</style></head><body>
+<h1>Emberfall: one scene, three styles</h1>
+<p>The same moment in each style: the Emberwright (orange) fires embers. A Tidecrab and a Dune Wisp shoot red enemy bullets. A Thornling waits in the meadow, and a loot bag lies on the sand. Compare readability first: can you see every red bullet at a glance?</p>
+<div class="grid">
+<figure id="px8"><canvas width="960" height="540" data-style="px8"></canvas><figcaption><b>Chunky pixel art, 8 px per tile.</b> <span>Classic look for this genre. Very readable, very cheap to produce. Few details.</span></figcaption></figure>
+<figure id="px16"><canvas width="960" height="540" data-style="px16"></canvas><figcaption><b>Detailed pixel art, 16 px per tile.</b> <span>More detail and shading per sprite. About 4 times the work per sprite.</span></figcaption></figure>
+<figure id="vector"><canvas width="960" height="540" data-style="vector"></canvas><figcaption><b>Clean vector.</b> <span>Smooth shapes, like the current build, refined. Scales to any screen. Easiest for code-drawn art.</span></figcaption></figure>
+</div>
+<script type="module">import { render } from "./scene.js"; document.querySelectorAll("canvas").forEach(c => render(c, c.dataset.style));</script>
+</body></html>

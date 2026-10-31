@@ -1,0 +1,12 @@
+{
+  "name": "emberfall",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm --filter client build",
+    "start": "pnpm --filter server start",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}

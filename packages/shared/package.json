@@ -1,0 +1,9 @@
+{
+  "name": "@emberfall/shared",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -p .", "test": "node --test --experimental-strip-types src/*.test.ts" },
+  "dependencies": { "fastnoise-lite": "1.1.1" },
+  "devDependencies": { "@types/node": "24.10.0", "typescript": "5.9.3" }
+}

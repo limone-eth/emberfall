@@ -1,0 +1,12 @@
+{
+  "name": "client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc -p ."
+  },
+  "dependencies": { "@emberfall/shared": "workspace:*", "pixi.js": "8.22.0" },
+  "devDependencies": { "vite": "7.1.12", "typescript": "5.9.3" }
+}

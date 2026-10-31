@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Emberfall</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="stage"></div>
+
+  <div id="hud" hidden>
+    <div class="panel stats">
+      <div class="who"><span id="h-name"></span> <span id="h-class" class="dim"></span></div>
+      <div class="row"><span class="tag">Lv <b id="h-level">1</b></span><span class="dim">Fame <b id="h-fame">0</b></span><span class="dim"><b id="h-online">0</b> online</span></div>
+      <div class="bar hp"><i id="h-hpfill"></i><span id="h-hp"></span></div>
+      <div class="bar xp"><i id="h-xpfill"></i><span id="h-xp"></span></div>
+      <div class="weapon" id="h-weapon"></div>
+      <div class="hint">WASD move · Mouse aim · Hold click to fire · <kbd>T</kbd> autofire</div>
+    </div>
+    <canvas id="minimap" width="192" height="192"></canvas>
+    <ul id="feed"></ul>
+    <div id="toast"></div>
+  </div>
+
+  <div id="login" class="overlay">
+    <div class="card">
+      <h1>Emberfall</h1>
+      <p class="sub">One life. The core burns at the centre of the island. Walk inward if you dare.</p>
+      <label>Hero name <input id="name" maxlength="12" autocomplete="off" placeholder="2-12 letters" /></label>
+      <div id="classes" class="classes"></div>
+      <p id="login-error" class="error"></p>
+      <button id="play">Wash ashore</button>
+      <p class="dim small">If your last hero is still alive, you resume as them.</p>
+    </div>
+  </div>
+
+  <div id="death" class="overlay" hidden>
+    <div class="card">
+      <h1 class="dead">You died</h1>
+      <p id="death-line"></p>
+      <h2>Graveyard</h2>
+      <table id="grave"><thead><tr><th>Class</th><th>Lv</th><th>Fame</th><th>Slain by</th></tr></thead><tbody></tbody></table>
+      <button id="again">Rise again</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
