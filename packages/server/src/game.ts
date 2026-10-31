@@ -83,6 +83,14 @@ export class Game {
   constructor(readonly seed: number, private db: Db) {
     this.world = generateWorld(seed);
     this.spawns = shoreSpawns(this.world);
+    // Dev only: DEV_SPAWN_TIER=0..4 spawns new players inside that biome tier (for art and balance checks).
+    const devTier = process.env.DEV_SPAWN_TIER;
+    if (devTier !== undefined) {
+      const w = this.world, want = Number(devTier), list: Array<{ x: number; y: number }> = [];
+      for (let y = 0; y < w.size; y += 3) for (let x = 0; x < w.size; x += 3)
+        if (tierAt(w, x + 0.5, y + 0.5) === want && !isSolid(w, x + 0.5, y + 0.5)) list.push({ x: x + 0.5, y: y + 0.5 });
+      if (list.length) { this.spawns = list; console.log(`[dev] spawning in tier ${want} (${list.length} spots)`); }
+    }
   }
 
   now(): number { return performance.now() - this.start; }

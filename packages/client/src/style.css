@@ -3,14 +3,14 @@
   --ember: #ff7a2f; --hp: #e04848; --xp: #f0b93a; --line: rgba(255, 240, 220, 0.12);
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+html, body { margin: 0; height: 100%; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; background: var(--bg); color: var(--ink); overflow: hidden;
   font: 14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
-#stage { position: fixed; inset: 0; cursor: crosshair; }
+#stage { position: fixed; inset: 0; cursor: crosshair; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 [hidden] { display: none !important; }
 .dim { color: var(--dim); } .small { font-size: 12px; }
 
 #hud { position: fixed; inset: 0; pointer-events: none; }
-.panel { position: absolute; top: 12px; left: 12px; width: 260px; padding: 12px; border-radius: 10px;
+.panel { position: absolute; top: max(12px, env(safe-area-inset-top)); left: max(12px, env(safe-area-inset-left)); width: 260px; padding: 12px; border-radius: 10px;
   background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(4px); }
 .who { font-weight: 600; font-size: 15px; }
 .row { display: flex; gap: 12px; margin: 4px 0 8px; font-size: 12px; }
@@ -22,15 +22,16 @@ html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); 
 .weapon { margin-top: 8px; font-size: 12px; }
 .hint { margin-top: 6px; font-size: 11px; color: var(--dim); }
 kbd { font: inherit; padding: 0 4px; border: 1px solid var(--line); border-radius: 3px; }
-#minimap { position: absolute; top: 12px; right: 12px; width: 192px; height: 192px; border-radius: 10px;
+#minimap { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 192px; height: 192px; border-radius: 10px;
   border: 1px solid var(--line); background: #000; image-rendering: pixelated; }
-#feed { position: absolute; left: 12px; bottom: 12px; margin: 0; padding: 0; list-style: none; width: min(460px, 70vw); font-size: 12px; }
+#feed { position: absolute; left: max(12px, env(safe-area-inset-left)); bottom: max(12px, env(safe-area-inset-bottom)); margin: 0; padding: 0; list-style: none; width: min(460px, 70vw); font-size: 12px; }
 #feed li { padding: 2px 8px; margin-top: 2px; background: rgba(0,0,0,0.45); border-radius: 4px; width: fit-content; }
 #toast { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); font-size: 22px; font-weight: 700;
   color: var(--xp); text-shadow: 0 2px 8px #000; opacity: 0; transition: opacity 200ms; }
 #toast.show { opacity: 1; }
 
-.overlay { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px;
+.overlay { position: fixed; inset: 0; display: grid; place-items: safe center; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
   background: radial-gradient(ellipse at center, rgba(60,25,10,0.65), rgba(0,0,0,0.92)); }
 .card { width: min(560px, 100%); padding: 24px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
 h1 { margin: 0 0 4px; font-size: 34px; letter-spacing: 0.02em; color: var(--ember); }
@@ -51,3 +52,36 @@ button:active { transform: scale(0.98); }
 table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 14px; }
 th, td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); } th { color: var(--dim); font-weight: 500; }
 td { font-variant-numeric: tabular-nums; }
+
+/* Touch hints: show the hint for the input the device has. */
+.touch-hint { display: none; }
+@media (pointer: coarse) { .key-hint { display: none; } .touch-hint { display: block; } }
+
+/* Two-stick touch controls (touch.ts). */
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+.stick { position: absolute; width: 112px; height: 112px; margin: -56px 0 0 -56px; border-radius: 50%;
+  border: 2px solid rgba(243, 233, 220, 0.28); background: rgba(13, 11, 10, 0.25); }
+.knob { position: absolute; left: 50%; top: 50%; width: 48px; height: 48px; margin: -24px 0 0 -24px; border-radius: 50%;
+  background: rgba(243, 233, 220, 0.45); border: 2px solid rgba(243, 233, 220, 0.7); }
+
+/* Phones: a small HUD so the hero and the bullets stay in view. */
+@media (max-width: 640px), (max-height: 500px) {
+  .panel { width: min(200px, 52vw); padding: 8px; border-radius: 8px; }
+  .who { font-size: 13px; }
+  .row { gap: 8px; margin: 2px 0 4px; font-size: 11px; }
+  .bar { height: 12px; margin-top: 4px; } .bar span { font-size: 10px; line-height: 12px; }
+  .weapon { margin-top: 4px; font-size: 11px; }
+  .hint { display: none !important; }
+  #minimap { width: 96px; height: 96px; border-radius: 8px; }
+  #feed { width: min(300px, 60vw); font-size: 11px; bottom: auto; top: calc(max(12px, env(safe-area-inset-top)) + 112px); }
+  #toast { font-size: 18px; }
+  .card { padding: 16px; } h1 { font-size: 28px; } .sub { margin-bottom: 12px; }
+  .classes { margin: 10px 0; }
+}
+/* Short landscape phones: classes side by side again, the card scrolls if needed. */
+@media (max-height: 500px) and (min-width: 521px) { .classes { grid-template-columns: repeat(3, 1fr); } }
+@media (max-height: 500px) {
+  .card { padding: 12px 16px; } h1 { font-size: 24px; } .sub, .card > .dim.small { display: none; }
+  input { padding: 8px 10px; } .classes { margin: 8px 0; } .cls { padding: 8px; }
+  button#play, button#again { padding: 10px; }
+}

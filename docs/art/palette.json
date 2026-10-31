@@ -1,0 +1,14 @@
+{
+  "name": "Emberfall: sun to ash",
+  "note": "Locked palette. Every sprite pixel must be one of these colors or fully transparent.",
+  "colors": {
+    "ink": "#14100e", "ash900": "#2a201c", "ash700": "#4a3a36", "ash500": "#6e5a52", "bone": "#cfc2b0", "white": "#f3e9dc",
+    "sand700": "#a88a5a", "sand500": "#c4a96f", "sand300": "#d8c08a", "sand100": "#ecdcb0",
+    "sea900": "#163352", "sea700": "#2e6e8e", "sea500": "#4c90ad", "sea300": "#7fd6ff", "sea100": "#d9f5ff",
+    "leaf900": "#1d3a1c", "leaf700": "#2a5a28", "leaf500": "#3f7a39", "leaf300": "#6aa84f", "leaf100": "#9bc53d",
+    "stone700": "#5e5a52", "stone500": "#7c776c", "stone300": "#a39d8f",
+    "ember900": "#5a1e10", "ember700": "#b8431c", "ember500": "#ff8a3d", "ember300": "#ffd08a", "gold": "#f6e27a",
+    "blood700": "#8a3d2b", "blood500": "#e0795b", "red": "#ff3d5a",
+    "violet700": "#5a3b6b", "violet500": "#b07fd6", "steel500": "#6fb7ff"
+  }
+}

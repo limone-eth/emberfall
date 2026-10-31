@@ -1,0 +1,27 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Hero sprite review</title>
+<style>
+body{margin:0;padding:20px;background:#0d0b0a;color:#f3e9dc;font:14px/1.45 system-ui,sans-serif}
+h1{font-size:20px;margin:0 0 4px;color:#ff8a3d} h2{font-size:15px;margin:0 0 6px} p{color:#a8998a;margin:0 0 14px;max-width:780px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px}
+section{background:#17120f;border:1px solid rgba(255,240,220,.12);border-radius:10px;padding:14px}
+canvas{width:288px;height:128px;image-rendering:pixelated;border-radius:6px;display:block}
+.zoom{display:flex;gap:12px;margin-top:10px;align-items:end} .zoom img{image-rendering:pixelated;background:#d8c08a;border-radius:4px}
+.drafts{display:flex;gap:12px} .drafts img{width:160px;border-radius:6px}
+ul{margin:8px 0 0;padding-left:18px;color:#a8998a}
+</style></head><body>
+<h1>Hero sprites: Emberwright and Tidecrab</h1>
+<p>GPT Image 2 drew both drafts on a grid of about 28 to 35 pixels, not 16. Both options below come from the same drafts. Each is shown at true game scale (32 screen px per tile) on sand, next to enemy bullets.</p>
+<div class="opts">
+<section id="opt16"><h2>Option A: 16 px per tile (as decided)</h2>
+<canvas id="c16" width="288" height="128"></canvas>
+<div class="zoom"><img src="ew16.png" width="128" height="128"><img src="tc16.png" width="128" height="128"></div>
+<ul><li>Matches the decision.</li><li>The draft is squeezed to 16×16: the face and the rod glow turn to mush. Each sprite needs hand-redrawing.</li></ul></section>
+<section id="opt32"><h2>Option B: 32 px per tile</h2>
+<canvas id="c32" width="288" height="128"></canvas>
+<div class="zoom"><img src="ew32.png" width="128" height="128"><img src="tc32.png" width="128" height="128"></div>
+<ul><li>Keeps almost all of the draft's detail: face, glowing eyes, claws.</li><li>Tiles are drawn at 32 px too, so every pixel stays the same size.</li><li>Still crisp pixel art, drawn at 1× scale on screen.</li></ul></section>
+</div>
+<h2 style="margin-top:18px">Raw GPT Image 2 drafts</h2>
+<div class="drafts"><img src="ew-draft.png"><img src="tc-draft.png"></div>
+<script type="module">import { draw } from "./board.js"; draw(c16, "ew16.png", "tc16.png", 16); draw(c32, "ew32.png", "tc32.png", 32);</script>
+</body></html>

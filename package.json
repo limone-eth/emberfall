@@ -8,5 +8,8 @@
     "start": "pnpm --filter server start",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "pngjs": "7.0.0"
   }
 }

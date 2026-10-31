@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0d0b0a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Emberfall</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
@@ -16,7 +19,8 @@
       <div class="bar hp"><i id="h-hpfill"></i><span id="h-hp"></span></div>
       <div class="bar xp"><i id="h-xpfill"></i><span id="h-xp"></span></div>
       <div class="weapon" id="h-weapon"></div>
-      <div class="hint">WASD move · Mouse aim · Hold click to fire · <kbd>T</kbd> autofire</div>
+      <div class="hint key-hint">WASD move · Mouse aim · Hold click to fire · <kbd>T</kbd> autofire</div>
+      <div class="hint touch-hint">Left thumb: move · Right thumb: aim and fire</div>
     </div>
     <canvas id="minimap" width="192" height="192"></canvas>
     <ul id="feed"></ul>

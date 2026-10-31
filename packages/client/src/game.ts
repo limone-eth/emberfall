@@ -5,11 +5,14 @@ import {
 } from "@emberfall/shared";
 import { Net } from "./net.ts";
 import { buildChunk, CHUNK, drawEnemy, drawBag } from "./draw.ts";
+import { loadArt, buildChunkSprites, CreatureSprite, bagView, ART_PX, type Art } from "./sprites.ts";
 import { Hud } from "./hud.ts";
+import { TouchSticks } from "./touch.ts";
 
 interface RemoteEnt {
   id: number; kind: number; type: string;
-  view: Container; body: Graphics; bar: Graphics; label?: Text;
+  view: Container; body: Container; bar: Graphics; label?: Text;
+  creature?: CreatureSprite; lastX: number; lastY: number;
   buf: Array<{ t: number; x: number; y: number }>;
   hp: number; maxHp: number; flash: number; seen: number; extra: string;
 }
@@ -27,7 +30,8 @@ export class ClientGame {
   private entLayer = new Container();
   private fxLayer = new Graphics();
   private labelLayer = new Container();
-  private chunks = new Map<number, Graphics>();
+  private chunks = new Map<number, Container>();
+  private art: Art | null = null;
   private ents = new Map<number, RemoteEnt>();
   private volleys = new Map<string, ClientVolley>();
   private serverToLocal = new Map<number, string>();
@@ -42,6 +46,7 @@ export class ClientGame {
   private acc = 0;
   private keys = new Set<string>();
   private mouse = { x: 0, y: 0, down: false };
+  private touch?: TouchSticks;
   private autofire = false;
   private lastShot = -Infinity;
   private cid = 0;
@@ -49,6 +54,8 @@ export class ClientGame {
   private shake = 0;
   private selfView = new Container();
   private selfBody = new Graphics();
+  private selfSprite?: CreatureSprite;
+  private selfDrawn = false;
   private selfAim = new Graphics();
   private destroyed = false;
 
@@ -62,6 +69,7 @@ export class ClientGame {
     this.app = new Application();
     await this.app.init({ background: "#0d0b0a", resizeTo: window, antialias: true, autoDensity: true, resolution: Math.min(devicePixelRatio, 2) });
     mount.appendChild(this.app.canvas);
+    this.art = await loadArt();
 
     this.worldLayer.addChild(this.terrain, this.entLayer, this.fxLayer, this.labelLayer);
     this.app.stage.addChild(this.worldLayer);
@@ -71,6 +79,7 @@ export class ClientGame {
     this.hud.show();
     this.hud.buildMinimap(this.world);
     this.bindInput();
+    this.touch = new TouchSticks(mount);
     this.resize();
     window.addEventListener("resize", this.resize);
     this.app.ticker.add((t) => this.frame(t.deltaMS));
@@ -81,6 +90,7 @@ export class ClientGame {
     this.destroyed = true;
     window.removeEventListener("resize", this.resize);
     this.unbind?.();
+    this.touch?.destroy();
     this.hud.hide();
     this.app?.destroy({ removeView: true }, { children: true });
   }
@@ -96,10 +106,11 @@ export class ClientGame {
       this.keys.add(k);
     };
     const ku = (e: KeyboardEvent) => this.keys.delete(e.key.toLowerCase());
-    const mm = (e: PointerEvent) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; };
-    const md = (e: PointerEvent) => { if (e.button === 0) this.mouse.down = true; mm(e); };
-    const mu = (e: PointerEvent) => { if (e.button === 0) this.mouse.down = false; };
-    const blur = () => { this.keys.clear(); this.mouse.down = false; };
+    // Touch pointers belong to the sticks (touch.ts); these handlers are for the mouse and pen.
+    const mm = (e: PointerEvent) => { if (e.pointerType === "touch") return; this.mouse.x = e.clientX; this.mouse.y = e.clientY; if (this.touch) this.touch.used = false; };
+    const md = (e: PointerEvent) => { if (e.pointerType === "touch") return; if (e.button === 0) this.mouse.down = true; mm(e); };
+    const mu = (e: PointerEvent) => { if (e.pointerType === "touch") return; if (e.button === 0) this.mouse.down = false; };
+    const blur = () => { this.keys.clear(); this.mouse.down = false; this.touch?.release(); };
     const cm = (e: Event) => e.preventDefault();
     window.addEventListener("keydown", kd); window.addEventListener("keyup", ku);
     window.addEventListener("pointermove", mm); window.addEventListener("pointerdown", md);
@@ -117,12 +128,17 @@ export class ClientGame {
     const k = this.keys;
     const mx = (k.has("d") || k.has("arrowright") ? 1 : 0) - (k.has("a") || k.has("arrowleft") ? 1 : 0);
     const my = (k.has("s") || k.has("arrowdown") ? 1 : 0) - (k.has("w") || k.has("arrowup") ? 1 : 0);
+    if (mx === 0 && my === 0 && this.touch) return this.touch.moveInput();
     return { mx, my };
   }
 
   private resize = (): void => {
-    // Keep the visible area inside the server's interest radius.
-    this.tilePx = Math.max(20, Math.ceil(Math.max(innerHeight / 24, innerWidth / 34)));
+    // Keep the visible area inside the server's interest radius: at most 34 tiles on the long
+    // side and 24 on the short side (portrait phones turn the box, so they see more ground).
+    const long = Math.max(innerWidth, innerHeight), short = Math.min(innerWidth, innerHeight);
+    const need = Math.max(20, Math.ceil(Math.max(short / 24, long / 34)));
+    // Sprites: the smallest whole multiple of 32 px that still fits inside the radius (crisp pixels).
+    this.tilePx = this.art ? Math.ceil(need / ART_PX) * ART_PX : need;
     this.worldLayer.scale.set(this.tilePx);
     for (const e of this.ents.values()) e.label?.scale.set(1 / this.tilePx);
     for (const f of this.floaters) f.text.scale.set(1 / this.tilePx);
@@ -138,7 +154,7 @@ export class ClientGame {
   private onSnap(m: Extract<ServerMsg, { t: "snap" }>): void {
     const first = !this.me;
     this.me = m.self;
-    if (first) { this.pos.x = m.self.x; this.pos.y = m.self.y; this.drawSelf(); }
+    if (first) { this.pos.x = m.self.x; this.pos.y = m.self.y; }
 
     // Reconcile own position: rewind to the server, replay unacked inputs.
     const before = { x: this.pos.x, y: this.pos.y };
@@ -164,16 +180,21 @@ export class ClientGame {
     if (id === this.myId) return;
     let e = this.ents.get(id);
     if (!e) {
-      const view = new Container(), body = new Graphics(), bar = new Graphics();
+      const view = new Container(), bar = new Graphics();
+      const art = this.art, radius = kind === 1 ? ENEMIES[type].radius : PLAYER_RADIUS;
+      let body: Container, creature: CreatureSprite | undefined;
+      if (art && kind !== 2 && art.frames(type).length) { creature = new CreatureSprite(art, type, radius); body = creature.view; }
+      else if (art && kind === 2 && bagView(art, type, extra === "soulbound")) body = bagView(art, type, extra === "soulbound")!;
+      else {
+        const g = new Graphics(); body = g;
+        if (kind === 0) g.circle(0, 0, PLAYER_RADIUS + 0.05).fill(CLASSES[type as keyof typeof CLASSES].color).stroke({ color: 0x111111, width: 0.07 });
+        else if (kind === 1) drawEnemy(g, ENEMIES[type]);
+        else drawBag(g, type, extra === "soulbound");
+      }
       view.addChild(body, bar);
-      e = { id, kind, type, view, body, bar, buf: [], hp, maxHp, flash: 0, seen: t, extra };
-      if (kind === 0) {
-        body.circle(0, 0, PLAYER_RADIUS + 0.05).fill(CLASSES[type as keyof typeof CLASSES].color).stroke({ color: 0x111111, width: 0.07 });
-        e.label = this.makeLabel(extra, 0xf3e9dc);
-      } else if (kind === 1) {
-        drawEnemy(body, ENEMIES[type]);
-        if (ENEMIES[type].boss) e.label = this.makeLabel(ENEMIES[type].name, 0xff8a3d);
-      } else drawBag(body, type, extra === "soulbound");
+      e = { id, kind, type, view, body, bar, buf: [], hp, maxHp, flash: 0, seen: t, extra, creature, lastX: x, lastY: y };
+      if (kind === 0) e.label = this.makeLabel(extra, 0xf3e9dc);
+      else if (kind === 1 && ENEMIES[type].boss) e.label = this.makeLabel(ENEMIES[type].name, 0xff8a3d);
       if (e.label) this.labelLayer.addChild(e.label);
       this.entLayer.addChildAt(view, kind === 2 ? 0 : this.entLayer.children.length);
       this.ents.set(id, e);
@@ -230,6 +251,7 @@ export class ClientGame {
 
   private frame(dtMs: number): void {
     if (!this.me) return;
+    if (!this.selfDrawn) { this.selfDrawn = true; this.drawSelf(); } // after the atlas has loaded
     dtMs = Math.min(dtMs, 100);
     const now = this.net.serverNow();
 
@@ -250,18 +272,23 @@ export class ClientGame {
 
     // Camera: centre on player, slight look-ahead toward the cursor, plus shake.
     const sw = this.app.screen.width, sh = this.app.screen.height;
-    const aimX = (this.mouse.x - sw / 2) / this.tilePx, aimY = (this.mouse.y - sh / 2) / this.tilePx;
+    const touchAim = this.touch?.used ? this.touch.aimInput() : undefined;
+    // Touch: the right stick gives a direction; look ahead up to 4 tiles that way.
+    const aimX = touchAim ? Math.cos(touchAim.angle) * (touchAim.fire ? 4 : 0) : (this.mouse.x - sw / 2) / this.tilePx;
+    const aimY = touchAim ? Math.sin(touchAim.angle) * (touchAim.fire ? 4 : 0) : (this.mouse.y - sh / 2) / this.tilePx;
     const look = 0.12;
     this.shake = Math.max(0, this.shake - dtMs / 1000);
     const sx = (Math.random() - 0.5) * this.shake, sy = (Math.random() - 0.5) * this.shake;
     const camX = vx + aimX * look + sx, camY = vy + aimY * look + sy;
-    this.worldLayer.position.set(sw / 2 - camX * this.tilePx, sh / 2 - camY * this.tilePx);
+    // Whole screen pixels, so tile edges stay sharp with no gaps.
+    const res = this.app.renderer.resolution;
+    this.worldLayer.position.set(Math.round((sw / 2 - camX * this.tilePx) * res) / res, Math.round((sh / 2 - camY * this.tilePx) * res) / res);
 
     // Shooting (predicted locally, confirmed by the server).
     const worldMouseX = camX + aimX, worldMouseY = camY + aimY;
-    const angle = Math.atan2(worldMouseY - vy, worldMouseX - vx);
+    const angle = touchAim ? touchAim.angle : Math.atan2(worldMouseY - vy, worldMouseX - vx);
     const weapon = CLASSES[this.me.cls].weapons[this.me.weaponTier];
-    if ((this.mouse.down || this.autofire) && now - this.lastShot >= weapon.cooldown) {
+    if ((this.mouse.down || this.autofire || touchAim?.fire) && now - this.lastShot >= weapon.cooldown) {
       this.lastShot = now;
       const cid = ++this.cid;
       const v: Volley = { ...weapon.pattern, id: -cid, owner: this.myId, team: 0, x: this.pos.x, y: this.pos.y, angle, t0: now, cid, color: CLASSES[this.me.cls].color };
@@ -271,6 +298,10 @@ export class ClientGame {
 
     this.selfView.position.set(vx, vy);
     this.selfAim.rotation = angle;
+    if (this.selfSprite) {
+      const { mx, my } = this.moveInput();
+      this.selfSprite.update(dtMs, mx, my, mx !== 0 || my !== 0);
+    }
     this.updateChunks(camX, camY);
     this.renderEnts(now - INTERP_DELAY_MS, dtMs);
     this.renderFx(now, dtMs);
@@ -279,8 +310,12 @@ export class ClientGame {
 
   private drawSelf(): void {
     const c = CLASSES[this.me.cls].color;
-    this.selfBody.clear().circle(0, 0, PLAYER_RADIUS + 0.05).fill(c).stroke({ color: 0xffffff, width: 0.08 });
-    this.selfAim.clear().roundRect(0.15, -0.06, 0.55, 0.12, 0.05).fill(0xf3e9dc);
+    this.selfAim.clear().roundRect(0.15, -0.06, 0.55, 0.12, 0.05).fill({ color: 0xf3e9dc, alpha: this.art ? 0.6 : 1 });
+    if (this.art && this.art.frames(this.me.cls).length) {
+      this.selfSprite = new CreatureSprite(this.art, this.me.cls, PLAYER_RADIUS);
+      this.selfBody.clear().ellipse(0, 0.46, 0.4, 0.14).stroke({ color: 0xf3e9dc, width: 0.04, alpha: 0.7 }); // "you" ring
+      this.selfView.addChild(this.selfSprite.view);
+    } else this.selfBody.clear().circle(0, 0, PLAYER_RADIUS + 0.05).fill(c).stroke({ color: 0xffffff, width: 0.08 });
   }
 
   private updateChunks(cx: number, cy: number): void {
@@ -295,7 +330,7 @@ export class ClientGame {
     for (let y = y0; y <= Math.min(y1, max); y++) {
       for (let x = x0; x <= Math.min(x1, max); x++) {
         const k = y * 1000 + x;
-        if (!this.chunks.has(k)) { const g = buildChunk(this.world, x, y); this.chunks.set(k, g); this.terrain.addChild(g); }
+        if (!this.chunks.has(k)) { const g = this.art ? buildChunkSprites(this.art, this.world, x, y) : buildChunk(this.world, x, y); this.chunks.set(k, g); this.terrain.addChild(g); }
       }
     }
   }
@@ -315,6 +350,11 @@ export class ClientGame {
       }
       e.view.position.set(x, y);
       if (e.kind === 2) { e.view.y += Math.sin(performance.now() / 300 + e.id) * 0.04; continue; }
+      if (e.creature) {
+        const dx = x - e.lastX, dy = y - e.lastY;
+        e.creature.update(dtMs, dx, dy, dx * dx + dy * dy > 1e-6 * dtMs * dtMs);
+        e.lastX = x; e.lastY = y;
+      }
       e.flash = Math.max(0, e.flash - dtMs / 120);
       e.body.tint = e.flash > 0 ? 0xffaaaa : 0xffffff;
       e.body.scale.set(1 + e.flash * 0.12);
@@ -342,10 +382,13 @@ export class ClientGame {
         bulletPos(v, i, now, tmp);
         if (blocksBullets(this.world, tmp.x, tmp.y)) { cv.dead[i] = 1; continue; }
         if (v.team === 1) {
-          g.circle(tmp.x, tmp.y, v.radius * 1.15).fill({ color: v.color, alpha: 0.95 }).stroke({ color: 0x1a0505, width: 0.05 });
-          g.circle(tmp.x, tmp.y, v.radius * 0.5).fill(0xffffff);
+          // Style guide section 4: 2 px ink ring, 1 px hue band, white core (sea100 for blue enemies).
+          const R = v.radius * 1.15, px = 1 / ART_PX;
+          g.circle(tmp.x, tmp.y, R).fill(0x14100e);
+          g.circle(tmp.x, tmp.y, R - 2 * px).fill(v.color);
+          g.circle(tmp.x, tmp.y, R - 3 * px).fill((v.color & 0xff) > 0xc0 && ((v.color >> 16) & 0xff) < 0x90 ? 0xd9f5ff : 0xf3e9dc);
         } else {
-          g.circle(tmp.x, tmp.y, v.radius).fill({ color: v.color, alpha: v.owner === this.myId ? 0.95 : 0.5 });
+          g.circle(tmp.x, tmp.y, v.radius).fill({ color: v.color, alpha: v.owner === this.myId ? 0.85 : 0.5 });
         }
       }
     }
